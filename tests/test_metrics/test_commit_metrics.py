@@ -1,6 +1,7 @@
 #SPDX-License-Identifier: MIT
 
-import pytest
+from tests.test_metrics.test_set_up_metrics import *
+
 
 def test_annual_commit_count_ranked_by_repo_in_repo_group(metrics):
     assert metrics.annual_commit_count_ranked_by_repo_in_repo_group(10).iloc[0].net > 0
