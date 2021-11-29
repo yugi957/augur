@@ -130,7 +130,7 @@ default_config = {
                     "repo_group_id": 0
                 },
                 {
-                    "delay": 150000,
+                    "delay": 86400,
                     "given": [
                         "repo_group"
                     ],
@@ -224,6 +224,15 @@ default_config = {
                     ],
                     "model": "clustering",
                     "repo_group_id": 0
+                },
+                {
+                    "delay": 10000,
+                    "given": [
+                        "git_url"
+                    ],
+                    "model": "repo_library_experience",
+                    "repo_group_id": 0
+
                 },
                 {
                     "all_focused": 1,
@@ -402,8 +411,8 @@ default_config = {
             "cache_expire": "3600",
             "host": "0.0.0.0",
             "port": main_port,
-            "workers": 12,
-            "timeout": 60000
+            "workers": 6,
+            "timeout": 6000
         },
         "Frontend": {
             "host": "0.0.0.0",
