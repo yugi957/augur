@@ -629,7 +629,7 @@ def pull_requests_model(self, entry_info, repo_id):
                     self.logger.debug(f"Forced exception")
                     self.logger.debug("Something went wrong", exc_info=sys.exc_info())
 
-        self.logger.debug("Made it past forced exception")
+            self.logger.debug("Made it past forced exception")
 
             try:
                 self.pull_request_comments_model(pk_source_prs)
