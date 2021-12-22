@@ -390,7 +390,7 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
 
         #Database action map is essential in order to avoid duplicates messing up the data
         ## 9/20/2021: SPG added closed_at, updated_at, and merged_at to the update map.
-        ## 11/29/2021: And this is the cause of PR updates not working because it doesn't handle NULLs ... I think. 
+        ## 11/29/2021: And this is the cause of PR updates not working because it doesn't handle NULLs ... I think.
         pr_action_map = {
             'insert': {
                 'source': ['id'],
@@ -419,7 +419,7 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
 
             #This is sending empty data to enrich_cntrb_id, fix with check
             if len(inc_source_prs['insert']) > 0:
-                try: 
+                try:
                     inc_source_prs['insert'] = self.enrich_cntrb_id(
                         inc_source_prs['insert'], str('user.login'), action_map_additions={
                             'insert': {
@@ -428,7 +428,7 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
                             }
                         }, prefix='user.'
                     )
-                except Exception as e: 
+                except Exception as e:
                     self.logger.debug(f"Pull Requests model failed with {e}.")
                     stacker = traceback.format_exc()
                     self.logger.debug(f"{stacker}")
@@ -440,7 +440,7 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
                 self.logger.debug(f"{stacker}")
 
             prs_insert = []
-            try: 
+            try:
                 prs_insert = [
                 {
                     'repo_id': self.repo_id,
@@ -456,9 +456,9 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
                     'pr_src_state': pr['state'],
                     'pr_src_locked': pr['locked'],
                     'pr_src_title': str(pr['title']),
-                    'pr_augur_contributor_id': int(pr['cntrb_id']) if ( ## Changed later on 12/3/2021 to use default contributor if something in enrich_cntrb_id broke 
-                    ### MUST ENSURE THIS DOES NOT CAUSE ANY MAJOR ISSUES ... i.e., its a little risky if we aren't dealing with more than the rare anomaly, which as 
-                    ### of 12/3/2021 appears empirically to be the case. 
+                    'pr_augur_contributor_id': int(pr['cntrb_id']) if ( ## Changed later on 12/3/2021 to use default contributor if something in enrich_cntrb_id broke
+                    ### MUST ENSURE THIS DOES NOT CAUSE ANY MAJOR ISSUES ... i.e., its a little risky if we aren't dealing with more than the rare anomaly, which as
+                    ### of 12/3/2021 appears empirically to be the case.
                         int(pr['cntrb_id']) ## cast as an int because of an otherwise inexplicable error.
                     ) else int(1), # also cast as an int due to an otherwise inexplicble error
                     ### Changed to int cast based on error 12/3/2021 SPG (int cast above is first change on 12/3)
@@ -490,7 +490,7 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
                     'pr_src_issue_url': pr['issue_url'],
                     'pr_src_comments_url': pr['comments_url'],
                     'pr_src_review_comments_url': pr['review_comments_url'],
-                    'pr_src_commits_url': pr['commits_url'], 
+                    'pr_src_commits_url': pr['commits_url'],
                     'pr_src_statuses_url': pr['statuses_url'],
                     'pr_src_author_association': pr['author_association'],
                     'tool_source': self.tool_source,
@@ -498,11 +498,11 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
                     'data_source': 'GitHub API'
                 } for pr in inc_source_prs['insert']
                 ]
-            except Exception as e: 
+            except Exception as e:
                 self.logger.debug(f"Pull Requests model failed with {e}.")
                 stacker = traceback.format_exc()
                 self.logger.debug(f"{stacker}")
-                pass 
+                pass
 
             # Removed due to error 11/18/2021 : and 'title' in pr['milestone']
 
@@ -591,7 +591,8 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
 
         return pk_source_prs
 
-    def pull_requests_model(self, entry_info, repo_id):
+
+def pull_requests_model(self, entry_info, repo_id):
         """Pull Request data collection function. Query GitHub API for PhubRs.
 
         :param entry_info: A dictionary consisiting of 'git_url' and 'repo_id'
@@ -613,12 +614,23 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
             self.logger.debug(f"Pull Requests model failed with {e}.")
             stacker = traceback.format_exc()
             self.logger.debug(f"{stacker}")
-            pass 
-
 
         #self.write_debug_data(pk_source_prs, 'pk_source_prs')
 
         if pk_source_prs:
+
+            self.logger.debug("Forcing exception: AMB")
+            try:
+                x = -1
+
+                if x < 0:
+                    raise Exception("Sorry, no numbers below zero")
+            except Exception as e:
+                    self.logger.debug(f"Forced exception")
+                    self.logger.debug("Something went wrong", exc_info=sys.exc_info())
+
+        self.logger.debug("Made it past forced exception")
+
             try:
                 self.pull_request_comments_model(pk_source_prs)
                 self.logger.info(f"Pull request comments model.")
@@ -626,35 +638,32 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
                 self.logger.debug(f"PR comments model failed on {e}. exception registered.")
                 stacker = traceback.format_exc()
                 self.logger.debug(f"{stacker}") 
+
+            try:
+                self.pull_request_events_model(pk_source_prs)
+                self.logger.info(f"Pull request events model.")
+            except Exception as e:
+                self.logger.debug(f"PR events model failed on {e}. exception registered for pr_step.")
+                stacker = traceback.format_exc()
+                self.logger.debug(f"{stacker}")
+
+            try:
+                self.logger.info(f"Pull request reviews model factored out for now due to speed.")
+            except Exception as e:
+                self.logger.debug(f"PR reviews model, which is factored out for now due to speed, somehow managed to fail on {e}. exception registered for pr_step.")
+                stacker = traceback.format_exc()
+                self.logger.debug(f"{stacker}")
+
+            try:
+                self.pull_request_nested_data_model(pk_source_prs)
+                self.logger.info(f"Pull request nested data model.")
+            except Exception as e:
+                self.logger.debug(f"PR nested model failed on {e}. exception registered for pr_step.")
+                stacker = traceback.format_exc()
+                self.logger.debug(f"{stacker}")
                 pass
-            finally:
-                try: 
-                    self.pull_request_events_model(pk_source_prs)
-                    self.logger.info(f"Pull request events model.")
-                except Exception as e: 
-                    self.logger.debug(f"PR events model failed on {e}. exception registered for pr_step.")
-                    stacker = traceback.format_exc()
-                    self.logger.debug(f"{stacker}")  
-                    pass 
-                finally: 
-                    try: 
-                        self.logger.info(f"Pull request reviews model factored out for now due to speed.")
-                    except Exception as e: 
-                        self.logger.debug(f"PR reviews model, which is factored out for now due to speed, somehow managed to fail on {e}. exception registered for pr_step.")
-                        stacker = traceback.format_exc()
-                        self.logger.debug(f"{stacker}")  
-                        pass 
-                    finally: 
-                        try:
-                            self.pull_request_nested_data_model(pk_source_prs)
-                            self.logger.info(f"Pull request nested data model.")
-                        except Exception as e: 
-                            self.logger.debug(f"PR nested model failed on {e}. exception registered for pr_step.")
-                            stacker = traceback.format_exc()
-                            self.logger.debug(f"{stacker}")
-                            pass  
-                        finally: 
-                            self.logger.debug("finished running through four models.")
+
+            self.logger.debug("finished running through four models.")
 
         self.register_task_completion(self.task_info, self.repo_id, 'pull_requests')
 
