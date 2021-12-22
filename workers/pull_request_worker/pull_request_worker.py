@@ -591,6 +591,12 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
 
         return pk_source_prs
 
+    def print_traceback(self, error_message, exception, debug_log=True):
+
+        if debug_log:
+            self.logger.debug(f"ERROR: {error_message}. Exception: {exception}", exc_info=sys.exc_info())
+        else:
+            self.logger.info(f"ERROR: {error_message}. Exception: {exception}", exc_info=sys.exc_info())
 
     def pull_requests_model(self, entry_info, repo_id):
         """Pull Request data collection function. Query GitHub API for PhubRs.
@@ -626,8 +632,7 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
                 if x < 0:
                     raise Exception("Sorry, no numbers below zero")
             except Exception as e:
-                    self.logger.debug(f"Forced exception")
-                    self.logger.debug("Something went wrong", exc_info=sys.exc_info())
+                print_traceback("Forced exception", e)
 
             self.logger.debug("Made it past forced exception")
 
@@ -636,6 +641,7 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
                 self.logger.info(f"Pull request comments model.")
             except Exception as e: 
                 self.logger.debug(f"PR comments model failed on {e}. exception registered.")
+                self.logger.debug("Something went wrong", exc_info=sys.exc_info())
                 stacker = traceback.format_exc()
                 self.logger.debug(f"{stacker}") 
 
