@@ -632,7 +632,7 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
                 if x < 0:
                     raise Exception("Sorry, no numbers below zero")
             except Exception as e:
-                print_traceback("Forced exception", e)
+                self.print_traceback("Forced exception", e)
 
             self.logger.debug("Made it past forced exception")
 
