@@ -592,7 +592,7 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
         return pk_source_prs
 
 
-def pull_requests_model(self, entry_info, repo_id):
+    def pull_requests_model(self, entry_info, repo_id):
         """Pull Request data collection function. Query GitHub API for PhubRs.
 
         :param entry_info: A dictionary consisiting of 'git_url' and 'repo_id'
