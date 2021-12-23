@@ -1,4 +1,4 @@
-#SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MIT
 import ast
 import json
 import logging
@@ -17,6 +17,7 @@ import sqlalchemy as s
 from sqlalchemy.sql.expression import bindparam
 from workers.worker_base import Worker
 
+
 class GitHubPullRequestWorker(WorkerGitInterfaceable):
     """
     Worker that collects Pull Request related data from the
@@ -25,6 +26,7 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
     :param task: most recent task the broker added to the worker's queue
     :param config: holds info like api keys, descriptions, and database connection strings
     """
+
     def __init__(self, config={}):
 
         worker_type = "pull_request_worker"
@@ -35,14 +37,14 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
 
         # Define the tables needed to insert, update, or delete on
         data_tables = ['contributors', 'pull_requests',
-            'pull_request_assignees', 'pull_request_events', 'pull_request_labels',
-            'pull_request_message_ref', 'pull_request_meta', 'pull_request_repo',
-            'pull_request_reviewers', 'pull_request_teams', 'message', 'pull_request_commits',
-            'pull_request_files', 'pull_request_reviews', 'pull_request_review_message_ref']
+                       'pull_request_assignees', 'pull_request_events', 'pull_request_labels',
+                       'pull_request_message_ref', 'pull_request_meta', 'pull_request_repo',
+                       'pull_request_reviewers', 'pull_request_teams', 'message', 'pull_request_commits',
+                       'pull_request_files', 'pull_request_reviews', 'pull_request_review_message_ref']
         operations_tables = ['worker_history', 'worker_job']
 
         self.deep_collection = True
-        self.platform_id = 25150 # GitHub
+        self.platform_id = 25150  # GitHub
 
         # Run the general worker initialization
         super().__init__(worker_type, config, given, models, data_tables, operations_tables)
@@ -52,7 +54,7 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
         self.tool_version = '1.0.0'
         self.data_source = 'GitHub API'
 
-        #Needs to be an attribute of the class for incremental database insert using paginate_endpoint
+        # Needs to be an attribute of the class for incremental database insert using paginate_endpoint
         self.pk_source_prs = []
 
     def graphql_paginate(self, query, data_subjects, before_parameters=None):
@@ -63,7 +65,7 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
         """
 
         self.logger.info(f'Start paginate with params: \n{data_subjects} '
-            f'\n{before_parameters}')
+                         f'\n{before_parameters}')
 
         def all_items(dictionary):
             for key, value in dictionary.items():
@@ -99,7 +101,7 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
         for data_subject, nest in data_subjects.items():
 
             self.logger.debug(f'Beginning paginate process for field {data_subject} '
-                 f'for query: {query}')
+                              f'for query: {query}')
 
             page_count = 0
             while has_previous_page:
@@ -111,7 +113,7 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
 
                 for attempt in range(num_attempts):
                     self.logger.info(f'Attempt #{attempt + 1} for hitting GraphQL endpoint '
-                        f'page number {page_count}\n')
+                                     f'page number {page_count}\n')
 
                     response = requests.post(base_url, json={'query': query.format(
                         **before_parameters)}, headers=self.headers)
@@ -136,7 +138,6 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
                             num_attempts -= 1
                         continue
 
-
                     if 'data' in data:
                         success = True
                         root = find_root_of_subject(data, data_subject)
@@ -152,8 +153,8 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
                             )
                             break
                         if data['message'] == (
-                            "You have triggered an abuse detection mechanism. Please wait a "
-                            "few minutes before you try again."
+                                "You have triggered an abuse detection mechanism. Please wait a "
+                                "few minutes before you try again."
                         ):
                             num_attempts -= 1
                             self.update_gh_rate_limit(response, temporarily_disable=True)
@@ -172,14 +173,13 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
                 tuples += data
 
             self.logger.info(f"Paged through {page_count} pages and "
-                f"collected {len(tuples)} data points\n")
+                             f"collected {len(tuples)} data points\n")
 
             if not nest:
                 return tuples
 
             return tuples + self.graphql_paginate(query, data_subjects[subject],
-                before_parameters=before_parameters)
-
+                                                  before_parameters=before_parameters)
 
     def pull_request_files_model(self, task_info, repo_id):
 
@@ -194,7 +194,6 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
         pr_file_rows = []
 
         for index, pull_request in enumerate(pr_numbers.itertuples()):
-
             self.logger.info(f'Querying files for pull request #{index + 1} of {len(pr_numbers)}')
 
             query = """
@@ -230,9 +229,8 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
                 'tool_source': self.tool_source,
                 'tool_version': self.tool_version,
                 'data_source': 'GitHub API',
-                'repo_id': self.repo_id, 
+                'repo_id': self.repo_id,
             } for pr_file in self.graphql_paginate(query, {'files': None})]
-
 
         # Get current table values
         table_values_sql = s.sql.text("""
@@ -261,14 +259,18 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
         dupe_columns = ['pull_request_id', 'pr_file_path']
         update_columns = ['pr_file_additions', 'pr_file_deletions']
 
-        need_insertion = pr_file_rows_df.merge(table_values, suffixes=('','_table'),
-                            how='outer', indicator=True, on=dupe_columns).loc[
-                                lambda x : x['_merge']=='left_only'][table_columns]
+        need_insertion = pr_file_rows_df.merge(table_values, suffixes=('', '_table'),
+                                               how='outer', indicator=True, on=dupe_columns).loc[
+            lambda x: x['_merge'] == 'left_only'][table_columns]
 
-        need_updates = pr_file_rows_df.merge(table_values, on=dupe_columns, suffixes=('','_table'),
-                        how='inner',indicator=False)[table_columns].merge(table_values,
-                            on=update_columns, suffixes=('','_table'), how='outer',indicator=True
-                                ).loc[lambda x : x['_merge']=='left_only'][table_columns]
+        need_updates = pr_file_rows_df.merge(table_values, on=dupe_columns, suffixes=('', '_table'),
+                                             how='inner', indicator=False)[table_columns].merge(table_values,
+                                                                                                on=update_columns,
+                                                                                                suffixes=('', '_table'),
+                                                                                                how='outer',
+                                                                                                indicator=True
+                                                                                                ).loc[
+            lambda x: x['_merge'] == 'left_only'][table_columns]
 
         need_updates['b_pull_request_id'] = need_updates['pull_request_id']
         need_updates['b_pr_file_path'] = need_updates['pr_file_path']
@@ -329,7 +331,6 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
         self.pr_id_inc = self.get_max_id('pull_requests', 'pull_request_id')
         self.pr_meta_id_inc = self.get_max_id('pull_request_meta', 'pr_repo_meta_id')
 
-
         # query existing PRs and the respective url we will append the commits url to
         pr_url_sql = s.sql.text("""
             SELECT DISTINCT pr_url, pull_requests.pull_request_id
@@ -338,7 +339,7 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
         """.format(self.repo_id))
         urls = pd.read_sql(pr_url_sql, self.db, params={})
 
-        for pull_request in urls.itertuples(): # for each url of PRs we have inserted
+        for pull_request in urls.itertuples():  # for each url of PRs we have inserted
             commits_url = pull_request.pr_url + '/commits?page={}'
             table = 'pull_request_commits'
             table_pkey = 'pr_cmt_id'
@@ -346,15 +347,15 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
             update_col_map = {}
 
             # Use helper paginate function to iterate the commits url and check for dupes
-            #TODO: figure out why dupes sometimes still happen.q
+            # TODO: figure out why dupes sometimes still happen.q
             pr_commits = self.paginate(
                 commits_url, duplicate_col_map, update_col_map, table, table_pkey,
                 where_clause="where pull_request_id = {}".format(pull_request.pull_request_id)
             )
 
-            for pr_commit in pr_commits: # post-pagination, iterate results
+            for pr_commit in pr_commits:  # post-pagination, iterate results
                 try:
-                    if pr_commit['flag'] == 'need_insertion': # if non-dupe
+                    if pr_commit['flag'] == 'need_insertion':  # if non-dupe
                         pr_commit_row = {
                             'pull_request_id': pull_request.pull_request_id,
                             'pr_cmt_sha': pr_commit['sha'],
@@ -380,13 +381,13 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
 
     def _get_pk_source_prs(self):
 
-        #self.owner and self.repo are both defined in the worker base's collect method using the url of the github repo.
+        # self.owner and self.repo are both defined in the worker base's collect method using the url of the github repo.
         pr_url = (
             f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls?state=all&"
             "direction=asc&per_page=100&page={}"
         )
 
-        #Database action map is essential in order to avoid duplicates messing up the data
+        # Database action map is essential in order to avoid duplicates messing up the data
         ## 9/20/2021: SPG added closed_at, updated_at, and merged_at to the update map.
         ## 11/29/2021: And this is the cause of PR updates not working because it doesn't handle NULLs ... I think.
         pr_action_map = {
@@ -400,8 +401,8 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
             }
         }
 
-        #Use a parent method in order to iterate through pull request pages
-        #Define a method to pass paginate_endpoint so that prs can be inserted incrementally
+        # Use a parent method in order to iterate through pull request pages
+        # Define a method to pass paginate_endpoint so that prs can be inserted incrementally
 
         def pk_source_increment_insert(inc_source_prs, action_map):
 
@@ -412,10 +413,10 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
                 self.register_task_completion(self.task_info, self.repo_id, 'pull_requests')
                 return
 
+            self.logger.debug(
+                f"inc_source_prs is: {len(inc_source_prs['insert'])} and the action map is {action_map}...")
 
-            self.logger.debug(f"inc_source_prs is: {len(inc_source_prs['insert'])} and the action map is {action_map}...")
-
-            #This is sending empty data to enrich_cntrb_id, fix with check
+            # This is sending empty data to enrich_cntrb_id, fix with check
             if len(inc_source_prs['insert']) > 0:
                 try:
                     inc_source_prs['insert'] = self.enrich_cntrb_id(
@@ -435,68 +436,72 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
             prs_insert = []
             try:
                 prs_insert = [
-                {
-                    'repo_id': self.repo_id,
-                    'pr_url': pr['url'],
-                    'pr_src_id': pr['id'],
-                    'pr_src_node_id': pr['node_id'],  ## 9/20/2021 - This was null. No idea why.
-                    'pr_html_url': pr['html_url'],
-                    'pr_diff_url': pr['diff_url'],
-                    'pr_patch_url': pr['patch_url'],
-                    'pr_issue_url': pr['issue_url'],
-                    'pr_augur_issue_id': None,
-                    'pr_src_number': pr['number'],
-                    'pr_src_state': pr['state'],
-                    'pr_src_locked': pr['locked'],
-                    'pr_src_title': str(pr['title']),
-                    'pr_augur_contributor_id': int(pr['cntrb_id']) if ( ## Changed later on 12/3/2021 to use default contributor if something in enrich_cntrb_id broke
-                    ### MUST ENSURE THIS DOES NOT CAUSE ANY MAJOR ISSUES ... i.e., its a little risky if we aren't dealing with more than the rare anomaly, which as
-                    ### of 12/3/2021 appears empirically to be the case.
-                        int(pr['cntrb_id']) ## cast as an int because of an otherwise inexplicable error.
-                    ) else int(1), # also cast as an int due to an otherwise inexplicble error
-                    ### Changed to int cast based on error 12/3/2021 SPG (int cast above is first change on 12/3)
-                    'pr_body': str(pr['body']).encode(encoding='UTF-8',errors='backslashreplace').decode(encoding='UTF-8',errors='ignore') if (
-                        pr['body']
-                    ) else None,
-                    'pr_created_at': pr['created_at'],
-                    'pr_updated_at': pr['updated_at'],
-                    'pr_closed_at': s.sql.expression.null() if not (  # This had to be changed because "None" is JSON. SQL requires NULL SPG 11/28/2021
-                        pr['closed_at']
-                    ) else pr['closed_at'],
-                    'pr_merged_at': None if not (  # This had to be changed because "None" is JSON. SQL requires NULL
-                        pr['merged_at']
-                    ) else pr['merged_at'],
-                    'pr_merge_commit_sha': pr['merge_commit_sha'],
-                    'pr_teams': None,
-                    'pr_milestone': None,
-                    'pr_commits_url': pr['commits_url'],
-                    'pr_review_comments_url': pr['review_comments_url'],
-                    'pr_review_comment_url': pr['review_comment_url'],
-                    'pr_comments_url': pr['comments_url'],
-                    'pr_statuses_url': pr['statuses_url'],
-                    'pr_meta_head_id': None if not (
-                        pr['head']
-                    ) else pr['head']['label'],
-                    'pr_meta_base_id': None if not (
-                        pr['base']
-                    ) else pr['base']['label'],
-                    'pr_src_issue_url': pr['issue_url'],
-                    'pr_src_comments_url': pr['comments_url'],
-                    'pr_src_review_comments_url': pr['review_comments_url'],
-                    'pr_src_commits_url': pr['commits_url'],
-                    'pr_src_statuses_url': pr['statuses_url'],
-                    'pr_src_author_association': pr['author_association'],
-                    'tool_source': self.tool_source,
-                    'tool_version': self.tool_version,
-                    'data_source': 'GitHub API'
-                } for pr in inc_source_prs['insert']
+                    {
+                        'repo_id': self.repo_id,
+                        'pr_url': pr['url'],
+                        'pr_src_id': pr['id'],
+                        'pr_src_node_id': pr['node_id'],  ## 9/20/2021 - This was null. No idea why.
+                        'pr_html_url': pr['html_url'],
+                        'pr_diff_url': pr['diff_url'],
+                        'pr_patch_url': pr['patch_url'],
+                        'pr_issue_url': pr['issue_url'],
+                        'pr_augur_issue_id': None,
+                        'pr_src_number': pr['number'],
+                        'pr_src_state': pr['state'],
+                        'pr_src_locked': pr['locked'],
+                        'pr_src_title': str(pr['title']),
+                        'pr_augur_contributor_id': int(pr['cntrb_id']) if (
+                        ## Changed later on 12/3/2021 to use default contributor if something in enrich_cntrb_id broke
+                            ### MUST ENSURE THIS DOES NOT CAUSE ANY MAJOR ISSUES ... i.e., its a little risky if we aren't dealing with more than the rare anomaly, which as
+                            ### of 12/3/2021 appears empirically to be the case.
+                            int(pr['cntrb_id'])  ## cast as an int because of an otherwise inexplicable error.
+                        ) else int(1),  # also cast as an int due to an otherwise inexplicble error
+                        ### Changed to int cast based on error 12/3/2021 SPG (int cast above is first change on 12/3)
+                        'pr_body': str(pr['body']).encode(encoding='UTF-8', errors='backslashreplace').decode(
+                            encoding='UTF-8', errors='ignore') if (
+                            pr['body']
+                        ) else None,
+                        'pr_created_at': pr['created_at'],
+                        'pr_updated_at': pr['updated_at'],
+                        'pr_closed_at': s.sql.expression.null() if not (
+                        # This had to be changed because "None" is JSON. SQL requires NULL SPG 11/28/2021
+                            pr['closed_at']
+                        ) else pr['closed_at'],
+                        'pr_merged_at': None if not (
+                        # This had to be changed because "None" is JSON. SQL requires NULL
+                            pr['merged_at']
+                        ) else pr['merged_at'],
+                        'pr_merge_commit_sha': pr['merge_commit_sha'],
+                        'pr_teams': None,
+                        'pr_milestone': None,
+                        'pr_commits_url': pr['commits_url'],
+                        'pr_review_comments_url': pr['review_comments_url'],
+                        'pr_review_comment_url': pr['review_comment_url'],
+                        'pr_comments_url': pr['comments_url'],
+                        'pr_statuses_url': pr['statuses_url'],
+                        'pr_meta_head_id': None if not (
+                            pr['head']
+                        ) else pr['head']['label'],
+                        'pr_meta_base_id': None if not (
+                            pr['base']
+                        ) else pr['base']['label'],
+                        'pr_src_issue_url': pr['issue_url'],
+                        'pr_src_comments_url': pr['comments_url'],
+                        'pr_src_review_comments_url': pr['review_comments_url'],
+                        'pr_src_commits_url': pr['commits_url'],
+                        'pr_src_statuses_url': pr['statuses_url'],
+                        'pr_src_author_association': pr['author_association'],
+                        'tool_source': self.tool_source,
+                        'tool_version': self.tool_version,
+                        'data_source': 'GitHub API'
+                    } for pr in inc_source_prs['insert']
                 ]
             except Exception as e:
                 self.print_traceback("Pr model failed when extrating data from the json that the api returned", e)
 
             # Removed due to error 11/18/2021 : and 'title' in pr['milestone']
 
-            #The b_pr_src_id bug comes from here
+            # The b_pr_src_id bug comes from here
             '''
             9/20/2021: Put the method definition for bulk insert here for reference. The method 
             is found in $AUGUR_HOME/workers/worker_persistence.py
@@ -522,8 +527,8 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
             '''
 
             if len(inc_source_prs['insert']) > 0 or len(inc_source_prs['update']) > 0:
-                #update_columns=action_map['update']['augur']
-                #actual_update_columns=update_columns.append('pr_closed_at').append('pr_updated_at').append('pr_merged_at')
+                # update_columns=action_map['update']['augur']
+                # actual_update_columns=update_columns.append('pr_closed_at').append('pr_updated_at').append('pr_merged_at')
                 self.bulk_insert(
                     self.pull_requests_table,
                     update=inc_source_prs['update'], unique_columns=action_map['insert']['augur'],
@@ -548,11 +553,10 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
             augur_merge_fields = ['pr_src_id']
 
             self.pk_source_prs += self.enrich_data_primary_keys(source_data, self.pull_requests_table,
-                gh_merge_fields, augur_merge_fields, in_memory=True)
+                                                                gh_merge_fields, augur_merge_fields, in_memory=True)
             return
 
-
-        #paginate endpoint with stagger enabled so that the above method can insert every 500
+        # paginate endpoint with stagger enabled so that the above method can insert every 500
 
         # self.logger.info(
         #     f"PR Action map is {pr_action_map}"
@@ -569,14 +573,14 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
         #     f"PR Action map is {pr_action_map} after source_prs. The source_prs are {source_prs}."
         # )
 
-        #Use the increment insert method in order to do the
-        #remaining pages of the paginated endpoint that weren't inserted inside the paginate_endpoint method
-        pk_source_increment_insert(source_prs,pr_action_map)
+        # Use the increment insert method in order to do the
+        # remaining pages of the paginated endpoint that weren't inserted inside the paginate_endpoint method
+        pk_source_increment_insert(source_prs, pr_action_map)
 
         pk_source_prs = self.pk_source_prs
 
-        #This attribute is only needed because paginate endpoint needs to
-        #send this data to the child class and this is the easiset way to do that.
+        # This attribute is only needed because paginate endpoint needs to
+        # send this data to the child class and this is the easiset way to do that.
         self.pk_source_prs = []
 
         return pk_source_prs
@@ -591,6 +595,7 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
             
         debug_log: boolean - if True is uses degub logging if False it uses info logging. It defaults to True                        
     """
+
     def print_traceback(self, exception_message, exception, debug_log=True):
 
         if debug_log:
@@ -614,12 +619,12 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
 
         pk_source_prs = []
 
-        try: 
+        try:
             pk_source_prs = self._get_pk_source_prs()
         except Exception as e:
             self.print_traceback("Pull Requests model failed", e)
 
-        #self.write_debug_data(pk_source_prs, 'pk_source_prs')
+        # self.write_debug_data(pk_source_prs, 'pk_source_prs')
 
         if pk_source_prs:
 
@@ -638,7 +643,8 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
             try:
                 self.logger.info(f"Pull request reviews model factored out for now due to speed.")
             except Exception as e:
-                self.print_traceback("PR reviews model, which is factored out for now due to speed, somehow managed to fail", e)
+                self.print_traceback(
+                    "PR reviews model, which is factored out for now due to speed, somehow managed to fail", e)
 
             try:
                 self.pull_request_nested_data_model(pk_source_prs)
@@ -677,10 +683,10 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
         }
 
         def pr_comments_insert(inc_pr_comments, comment_action_map, comment_ref_action_map):
-            #self.write_debug_data(pr_comments, 'pr_comments')
+            # self.write_debug_data(pr_comments, 'pr_comments')
 
             inc_pr_comments['insert'] = self.text_clean(inc_pr_comments['insert'], 'body')
-            #This is sending empty data to enrich_cntrb_id, fix with check
+            # This is sending empty data to enrich_cntrb_id, fix with check
             if len(inc_pr_comments['insert']) > 0:
                 inc_pr_comments['insert'] = self.enrich_cntrb_id(
                     inc_pr_comments['insert'], str('user.login'), action_map_additions={
@@ -692,120 +698,118 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
                 )
             else:
                 self.logger.info("Contributor enrichment is not needed, no inserts in action map.")
-            pr_comments_insert = [] # added 12/3/2021 to put the value assignment into a try/except block
-            try: 
+            pr_comments_insert = []  # added 12/3/2021 to put the value assignment into a try/except block
+            try:
                 pr_comments_insert = [
                     {
                         'pltfrm_id': self.platform_id,
-                        'msg_text': str(comment['body']).encode(encoding='UTF-8',errors='backslashreplace').decode(encoding='UTF-8',errors='ignore') if (
+                        'msg_text': str(comment['body']).encode(encoding='UTF-8', errors='backslashreplace').decode(
+                            encoding='UTF-8', errors='ignore') if (
                             comment['body']
                         ) else None,
                         'msg_timestamp': comment['created_at'],
-                        'cntrb_id': int(comment['cntrb_id']) if ( ### added 12/3/2021 to address data anomalies. MONITOR. POSSIBLY WRONG if anomalies are *NOT* 
+                        'cntrb_id': int(comment['cntrb_id']) if (
+                        ### added 12/3/2021 to address data anomalies. MONITOR. POSSIBLY WRONG if anomalies are *NOT*
                             ### EXTREMELY RARE
                             comment['cntrb_id']
                         ) else 1,
                         'tool_source': self.tool_source,
                         'tool_version': self.tool_version,
-                        'data_source': self.data_source, 
+                        'data_source': self.data_source,
                         'repo_id': self.repo_id,
                         'platform_msg_id': int(comment['id']),
                         'platform_node_id': comment['node_id']
                     } for comment in inc_pr_comments['insert']
                 ]
             except Exception as e:
-                self.print_traceback("Pr comments model, error when extracting fields from json that the api returned", e)
+                self.print_traceback("Pr comments model, error when extracting fields from json that the api returned",
+                                     e)
 
             try:
-                self.bulk_insert(self.message_table, insert=pr_comments_insert, 
-                    unique_columns=comment_action_map['insert']['augur'])
+                self.bulk_insert(self.message_table, insert=pr_comments_insert,
+                                 unique_columns=comment_action_map['insert']['augur'])
             except Exception as e:
                 self.print_traceback("Pr comments model, error on bulk insert", e)
 
-            finally:
-                    try:
-                        c_pk_source_comments = self.enrich_data_primary_keys(
-                            inc_pr_comments['insert'], self.message_table, 
-                            comment_action_map['insert']['source'],
-                            comment_action_map['insert']['augur'], in_memory=True)
+            try:
+                c_pk_source_comments = self.enrich_data_primary_keys(
+                    inc_pr_comments['insert'], self.message_table,
+                    comment_action_map['insert']['source'],
+                    comment_action_map['insert']['augur'], in_memory=True)
 
-                        self.write_debug_data(c_pk_source_comments, 'c_pk_source_comments')
+                self.write_debug_data(c_pk_source_comments, 'c_pk_source_comments')
 
-                        self.logger.info(f"log of the length of c_pk_source_comments {len(c_pk_source_comments)}.")
+                self.logger.info(f"log of the length of c_pk_source_comments {len(c_pk_source_comments)}.")
 
-                        # both_pk_source_comments = self.enrich_data_primary_keys(
-                        #     c_pk_source_comments, self.pull_requests_table,
-                        #     ['issue_url'], ['pr_issue_url'], in_memory=True)
-                        both_pk_source_comments = self.enrich_data_primary_keys(
-                            c_pk_source_comments, self.pull_requests_table,
-                            ['pull_request_url'], ['pr_url'], in_memory=True)
-                        ## The pull_request_url and pr_url mappings are going on my emergent understanding
-                        ## that enrich primary keys is retrieving the primary key from the already populated
-                        ## pull requests table, using the endpoint's 'pull_request_url' value, and mapping it 
-                        ## to the 'pr_url' in the pull_requests Table. SPG 12/2/2021
+                # both_pk_source_comments = self.enrich_data_primary_keys(
+                #     c_pk_source_comments, self.pull_requests_table,
+                #     ['issue_url'], ['pr_issue_url'], in_memory=True)
+                both_pk_source_comments = self.enrich_data_primary_keys(
+                    c_pk_source_comments, self.pull_requests_table,
+                    ['pull_request_url'], ['pr_url'], in_memory=True)
+                ## The pull_request_url and pr_url mappings are going on my emergent understanding
+                ## that enrich primary keys is retrieving the primary key from the already populated
+                ## pull requests table, using the endpoint's 'pull_request_url' value, and mapping it
+                ## to the 'pr_url' in the pull_requests Table. SPG 12/2/2021
 
-                        self.logger.info(f"log of the length of both_pk_source_comments {len(both_pk_source_comments)}.")
+                self.logger.info(f"log of the length of both_pk_source_comments {len(both_pk_source_comments)}.")
 
+                # both_pk_source_comments = self.enrich_data_primary_keys(
+                #      c_pk_source_comments, self.pull_request_reviews_table, ['pull_request_review_id'],
+                #      ['pr_review_src_id'], in_memory=True
+                #  )
 
-       # both_pk_source_comments = self.enrich_data_primary_keys(
-       #      c_pk_source_comments, self.pull_request_reviews_table, ['pull_request_review_id'],
-       #      ['pr_review_src_id'], in_memory=True 
-       #  )
+                # self.write_debug_data(both_pk_source_comments, 'both_pk_source_comments')
+                self.logger.debug(f"length of both_pk_source_comments: {len(both_pk_source_comments)}")
+                pr_message_ref_insert = [
+                    {
+                        'pull_request_id': comment['pull_request_id'],
+                        'msg_id': comment['msg_id'],  # to cast, or not to cast. That is the question. 12/6/2021
+                        'pr_message_ref_src_comment_id': int(comment['id']),
+                        'pr_message_ref_src_node_id': comment['node_id'],
+                        'tool_source': self.tool_source,
+                        'tool_version': self.tool_version,
+                        'data_source': self.data_source,
+                        'repo_id': self.repo_id
+                    } for comment in both_pk_source_comments
+                ]
 
-                        #self.write_debug_data(both_pk_source_comments, 'both_pk_source_comments')
-                        self.logger.debug(f"length of both_pk_source_comments: {len(both_pk_source_comments)}")
-                        pr_message_ref_insert = [
-                            {
-                                'pull_request_id': comment['pull_request_id'],
-                                'msg_id': comment['msg_id'], # to cast, or not to cast. That is the question. 12/6/2021
-                                'pr_message_ref_src_comment_id': int(comment['id']),
-                                'pr_message_ref_src_node_id': comment['node_id'],
-                                'tool_source': self.tool_source,
-                                'tool_version': self.tool_version,
-                                'data_source': self.data_source,
-                                'repo_id': self.repo_id
-                            } for comment in both_pk_source_comments
-                        ]
+                self.bulk_insert(self.pull_request_message_ref_table, insert=pr_message_ref_insert,
+                                 unique_columns=comment_ref_action_map['insert']['augur'])
 
-                        self.bulk_insert(self.pull_request_message_ref_table, insert=pr_message_ref_insert,
-                            unique_columns=comment_ref_action_map['insert']['augur'])
+            except Exception as e:
+                self.print_traceback("Adding primary keys to msg ref tables", e)
 
-                    except Exception as e:
-                        self.print_traceback("Adding primary keys to msg ref tables", e)
-
-                    finally:
-
-                        self.logger.info("Finished message insert section.")
+            self.logger.info("Finished message insert section.")
 
         # TODO: add relational table so we can include a where_clause here
-        try: 
+        try:
             pr_comments = self.paginate_endpoint(
                 comments_url, action_map=comment_action_map, table=self.message_table,
                 where_clause=self.message_table.c.msg_id.in_(
                     [
                         msg_row[0] for msg_row in self.db.execute(
-                            s.sql.select(
-                                [self.pull_request_message_ref_table.c.msg_id]
-                            ).where(
-                                self.pull_request_message_ref_table.c.pull_request_id.in_(
-                                    set(pd.DataFrame(pk_source_prs)['pull_request_id'])
-                                )
+                        s.sql.select(
+                            [self.pull_request_message_ref_table.c.msg_id]
+                        ).where(
+                            self.pull_request_message_ref_table.c.pull_request_id.in_(
+                                set(pd.DataFrame(pk_source_prs)['pull_request_id'])
                             )
-                        ).fetchall()
+                        )
+                    ).fetchall()
                     ]
                 ),
                 stagger=True,
                 insertion_method=pr_comments_insert
             )
 
-            pr_comments_insert(pr_comments,comment_action_map,comment_ref_action_map)
+            pr_comments_insert(pr_comments, comment_action_map, comment_ref_action_map)
             self.logger.info(f"comments inserted for repo_id: {self.repo_id}")
-            return 
+            return
         except Exception as e:
-            self.logger.info(f"pr comments paginate endpoint and insertion: {e}")
+            self.print_traceback("pr comments paginate endpoint and insertion", e)
 
-        finally: 
-            self.logger.debug(f"Pull request messages and message refs worked without exception for {self.repo_id}")
+        self.logger.debug(f"Pull request messages and message refs worked without exception for {self.repo_id}")
 
     def pull_request_events_model(self, pk_source_prs=[]):
 
@@ -827,7 +831,7 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
             }
         }
 
-        #list to hold contributors needing insertion or update
+        # list to hold contributors needing insertion or update
         pr_events = self.paginate_endpoint(
             events_url, table=self.pull_request_events_table, action_map=event_action_map,
             where_clause=self.pull_request_events_table.c.pull_request_id.in_(
@@ -835,10 +839,11 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
             )
         )
 
-        #self.write_debug_data(pr_events, 'pr_events')
+        # self.write_debug_data(pr_events, 'pr_events')
 
         pk_pr_events = self.enrich_data_primary_keys(pr_events['insert'],
-            self.pull_requests_table, ['issue.url'], ['pr_issue_url'], in_memory=True)
+                                                     self.pull_requests_table, ['issue.url'], ['pr_issue_url'],
+                                                     in_memory=True)
 
         self.write_debug_data(pk_pr_events, 'pk_pr_events')
 
@@ -869,30 +874,29 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
                 'data_source': self.data_source,
                 'pr_platform_event_id': int(event['issue.id']),
                 'platform_id': self.platform_id,
-                'repo_id': self.repo_id 
-            } for event in pk_pr_events if event['actor'] is not None #12/6/2021 added event['cntrb_id'] as NULLs were getting through. 
+                'repo_id': self.repo_id
+            } for event in pk_pr_events if event['actor'] is not None
+            # 12/6/2021 added event['cntrb_id'] as NULLs were getting through.
         ]
-        try: 
-            self.bulk_insert(self.pull_request_events_table, insert=pr_events_insert, unique_columns=event_action_map['insert']['augur'])
+        try:
+            self.bulk_insert(self.pull_request_events_table, insert=pr_events_insert,
+                             unique_columns=event_action_map['insert']['augur'])
         except Exception as e:
             self.print_traceback("PR events data insertion", e)
 
     def pull_request_nested_data_model(self, pk_source_prs=[]):
-        try: 
+        try:
 
             if not pk_source_prs:
                 pk_source_prs = self._get_pk_source_prs()
-                #prdata = json.loads(json.dumps(pk_source_prs))
-                #self.logger.debug(f"nested data model pk_source_prs structure is: {prdata}.")
-            else: 
-                #prdata = json.loads(json.dumps(pk_source_prs))
-                self.logger.debug("nested model loaded.") 
+                # prdata = json.loads(json.dumps(pk_source_prs))
+                # self.logger.debug(f"nested data model pk_source_prs structure is: {prdata}.")
+            else:
+                # prdata = json.loads(json.dumps(pk_source_prs))
+                self.logger.debug("nested model loaded.")
 
-        except Exception as e: 
-
-            self.logger.debug(f'gettign source prs failed for nested model on {e}.')
-            pass 
-
+        except Exception as e:
+            self.print_traceback("getting prs in nested data model", e)
 
         labels_all = []
         reviewers_all = []
@@ -925,12 +929,11 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
             )
             meta_all += [pr['head'], pr['base']]
 
-
             pr_nested_loop = 1
-            while (pr_nested_loop <5):
+            while (pr_nested_loop < 5):
                 try:
-                    if pr_nested_loop == 1: 
-                        pr_nested_loop += 1                
+                    if pr_nested_loop == 1:
+                        pr_nested_loop += 1
                         # PR labels insertion
                         label_action_map = {
                             'insert': {
@@ -939,15 +942,13 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
                             }
                         }
 
-
                         table_values_pr_labels = self.db.execute(
-                            s.sql.select(self.get_relevant_columns(self.pull_request_labels_table,label_action_map))
+                            s.sql.select(self.get_relevant_columns(self.pull_request_labels_table, label_action_map))
                         ).fetchall()
 
                         source_labels_insert, _ = self.organize_needed_data(
                             labels_all, table_values=table_values_pr_labels, action_map=label_action_map
                         )
-
 
                         labels_insert = [
                             {
@@ -961,13 +962,13 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
                                 'tool_source': self.tool_source,
                                 'tool_version': self.tool_version,
                                 'data_source': self.data_source,
-                                'repo_id': self.repo_id 
+                                'repo_id': self.repo_id
                             } for label in source_labels_insert
                         ]
 
                         self.bulk_insert(self.pull_request_labels_table, insert=labels_insert)
 
-                    elif pr_nested_loop == 2: 
+                    elif pr_nested_loop == 2:
                         pr_nested_loop += 1
                         # PR reviewers insertion
                         reviewer_action_map = {
@@ -976,9 +977,10 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
                                 'augur': ['pull_request_id', 'pr_reviewer_src_id']
                             }
                         }
-               
+
                         table_values_issue_labels = self.db.execute(
-                            s.sql.select(self.get_relevant_columns(self.pull_request_reviewers_table,reviewer_action_map))
+                            s.sql.select(
+                                self.get_relevant_columns(self.pull_request_reviewers_table, reviewer_action_map))
                         ).fetchall()
                         source_reviewers_insert, _ = self.organize_needed_data(
                             reviewers_all, table_values=table_values_issue_labels,
@@ -1005,12 +1007,12 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
                                 'tool_source': self.tool_source,
                                 'tool_version': self.tool_version,
                                 'data_source': self.data_source,
-                                'repo_id': self.repo_id 
+                                'repo_id': self.repo_id
                             } for reviewer in source_reviewers_insert if 'login' in reviewer
                         ]
                         self.bulk_insert(self.pull_request_reviewers_table, insert=reviewers_insert)
 
-                    elif pr_nested_loop ==3: 
+                    elif pr_nested_loop == 3:
                         # PR assignees insertion
                         pr_nested_loop += 1
                         assignee_action_map = {
@@ -1020,9 +1022,9 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
                             }
                         }
 
-
                         table_values_assignees_labels = self.db.execute(
-                            s.sql.select(self.get_relevant_columns(self.pull_request_assignees_table,assignee_action_map))
+                            s.sql.select(
+                                self.get_relevant_columns(self.pull_request_assignees_table, assignee_action_map))
                         ).fetchall()
 
                         source_assignees_insert, _ = self.organize_needed_data(
@@ -1042,7 +1044,6 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
                         else:
                             self.logger.info("Contributor enrichment is not needed, no inserts provided.")
 
-
                         assignees_insert = [
                             {
                                 'pull_request_id': assignee['pull_request_id'],
@@ -1051,12 +1052,12 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
                                 'tool_source': self.tool_source,
                                 'tool_version': self.tool_version,
                                 'data_source': self.data_source,
-                                'repo_id': self.repo_id 
+                                'repo_id': self.repo_id
                             } for assignee in source_assignees_insert if 'login' in assignee
                         ]
                         self.bulk_insert(self.pull_request_assignees_table, insert=assignees_insert)
 
-                    elif pr_nested_loop == 4: 
+                    elif pr_nested_loop == 4:
                         # PR meta insertion
                         pr_nested_loop += 1
                         meta_action_map = {
@@ -1067,13 +1068,12 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
                         }
 
                         table_values_pull_request_meta = self.db.execute(
-                            s.sql.select(self.get_relevant_columns(self.pull_request_meta_table,meta_action_map))
+                            s.sql.select(self.get_relevant_columns(self.pull_request_meta_table, meta_action_map))
                         ).fetchall()
 
                         source_meta_insert, _ = self.organize_needed_data(
                             meta_all, table_values=table_values_pull_request_meta, action_map=meta_action_map
                         )
-
 
                         if len(source_meta_insert) > 0:
                             source_meta_insert = self.enrich_cntrb_id(
@@ -1094,22 +1094,24 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
                                 'pr_src_meta_label': meta['label'],
                                 'pr_src_meta_ref': meta['ref'],
                                 'pr_sha': meta['sha'],
-                                'cntrb_id': meta['cntrb_id'],  ## Cast as int for the `nan` user by SPG on 11/28/2021; removed 12/6/2021
+                                'cntrb_id': meta['cntrb_id'],
+                                ## Cast as int for the `nan` user by SPG on 11/28/2021; removed 12/6/2021
                                 'tool_source': self.tool_source,
                                 'tool_version': self.tool_version,
                                 'data_source': self.data_source,
-                                'repo_id': self.repo_id 
-                            } for meta in source_meta_insert if 'login' in meta['user']  # trying to fix bug SPG 11/29/2021 #meta['user'] and 'login' in meta['user']
+                                'repo_id': self.repo_id
+                            } for meta in source_meta_insert if 'login' in meta['user']
+                            # trying to fix bug SPG 11/29/2021 #meta['user'] and 'login' in meta['user']
                         ]  # reverted above to see if it works with other fixes.
                         self.bulk_insert(self.pull_request_meta_table, insert=meta_insert)
 
                 except Exception as e:
                     self.print_traceback("Nested data model", e)
-                    continue   
+                    continue
 
     def query_pr_repo(self, pr_repo, pr_repo_type, pr_meta_id):
         """ TODO: insert this data as extra columns in the meta table """
-        try: 
+        try:
             self.logger.info(f'Querying PR {pr_repo_type} repo')
 
             table = 'pull_request_repo'
@@ -1141,7 +1143,7 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
                 'pr_repo_name': new_pr_repo['name'],
                 'pr_repo_full_name': new_pr_repo['full_name'],
                 'pr_repo_private_bool': new_pr_repo['private'],
-                'pr_cntrb_id': cntrb_id, #12/6/2021 removed int casting 
+                'pr_cntrb_id': cntrb_id,  # 12/6/2021 removed int casting
                 'tool_source': self.tool_source,
                 'tool_version': self.tool_version,
                 'data_source': self.data_source
@@ -1161,4 +1163,4 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
             self.logger.debug(f"repo exception registerred for PRs: {e}")
             self.logger.debug(f"Nested Model error at loop {pr_nested_loop} : {e}.")
             stacker = traceback.format_exc()
-            self.logger.debug(f"{stacker}")  
+            self.logger.debug(f"{stacker}")
