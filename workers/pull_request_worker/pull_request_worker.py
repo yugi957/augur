@@ -591,12 +591,22 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
 
         return pk_source_prs
 
-    def print_traceback(self, error_message, exception, debug_log=True):
+    """
+    Prints the full traceback when an exception is triggered and we need the line that caused it
+    
+    Params
+        exception_message: string - message saying where the exception occurred
+        exception: string - created when an exception occurs. In the line below the e variable is what is should be passed to this paramater
+            except Exception as e
+            
+        debug_log: boolean - if True is uses degub logging if False it uses info logging. It defaults to True                        
+    """
+    def print_traceback(self, exception_message, exception, debug_log=True):
 
         if debug_log:
-            self.logger.debug(f"ERROR: {error_message}. Exception: {exception}", exc_info=sys.exc_info())
+            self.logger.debug(f"{exception_message}. ERROR: {exception}", exc_info=sys.exc_info())
         else:
-            self.logger.info(f"ERROR: {error_message}. Exception: {exception}", exc_info=sys.exc_info())
+            self.logger.info(f"{exception_message}. ERROR: {exception}", exc_info=sys.exc_info())
 
     def pull_requests_model(self, entry_info, repo_id):
         """Pull Request data collection function. Query GitHub API for PhubRs.
@@ -616,58 +626,35 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
 
         try: 
             pk_source_prs = self._get_pk_source_prs()
-        except Exception as e: 
-            self.logger.debug(f"Pull Requests model failed with {e}.")
-            stacker = traceback.format_exc()
-            self.logger.debug(f"{stacker}")
+        except Exception as e:
+            self.print_traceback("Pull Requests model failed", e)
 
         #self.write_debug_data(pk_source_prs, 'pk_source_prs')
 
         if pk_source_prs:
 
-            self.logger.debug("Forcing exception: AMB")
-            try:
-                x = -1
-
-                if x < 0:
-                    raise Exception("Sorry, no numbers below zero")
-            except Exception as e:
-                self.print_traceback("Forced exception", e)
-
-            self.logger.debug("Made it past forced exception")
-
             try:
                 self.pull_request_comments_model(pk_source_prs)
                 self.logger.info(f"Pull request comments model.")
-            except Exception as e: 
-                self.logger.debug(f"PR comments model failed on {e}. exception registered.")
-                self.logger.debug("Something went wrong", exc_info=sys.exc_info())
-                stacker = traceback.format_exc()
-                self.logger.debug(f"{stacker}") 
+            except Exception as e:
+                self.print_traceback("PR comments model failed", e)
 
             try:
                 self.pull_request_events_model(pk_source_prs)
                 self.logger.info(f"Pull request events model.")
             except Exception as e:
-                self.logger.debug(f"PR events model failed on {e}. exception registered for pr_step.")
-                stacker = traceback.format_exc()
-                self.logger.debug(f"{stacker}")
+                self.print_traceback("PR events model failed", e)
 
             try:
                 self.logger.info(f"Pull request reviews model factored out for now due to speed.")
             except Exception as e:
-                self.logger.debug(f"PR reviews model, which is factored out for now due to speed, somehow managed to fail on {e}. exception registered for pr_step.")
-                stacker = traceback.format_exc()
-                self.logger.debug(f"{stacker}")
+                self.print_traceback("PR reviews model, which is factored out for now due to speed, somehow managed to fail", e)
 
             try:
                 self.pull_request_nested_data_model(pk_source_prs)
                 self.logger.info(f"Pull request nested data model.")
             except Exception as e:
-                self.logger.debug(f"PR nested model failed on {e}. exception registered for pr_step.")
-                stacker = traceback.format_exc()
-                self.logger.debug(f"{stacker}")
-                pass
+                self.print_traceback("PR nested model failed", e)
 
             self.logger.debug("finished running through four models.")
 
