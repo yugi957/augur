@@ -929,9 +929,8 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
             )
             meta_all += [pr['head'], pr['base']]
 
-            pr_nested_loop = 1
             # loops through the values 1, 2, 3, and 4
-            while (pr_nested_loop < 5):
+            for pr_nested_loop in range(1, 5):
                 try:
                     if pr_nested_loop == 1:
                         # PR labels insertion
@@ -1101,8 +1100,6 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
                             # trying to fix bug SPG 11/29/2021 #meta['user'] and 'login' in meta['user']
                         ]  # reverted above to see if it works with other fixes.
                         self.bulk_insert(self.pull_request_meta_table, insert=meta_insert)
-
-                    pr_nested_loop += 1
 
                 except Exception as e:
                     self.print_traceback("Nested data model", e)
