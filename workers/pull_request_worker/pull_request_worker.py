@@ -930,10 +930,10 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
             meta_all += [pr['head'], pr['base']]
 
             pr_nested_loop = 1
+            # loops through the values 1, 2, 3, and 4
             while (pr_nested_loop < 5):
                 try:
                     if pr_nested_loop == 1:
-                        pr_nested_loop += 1
                         # PR labels insertion
                         label_action_map = {
                             'insert': {
@@ -969,7 +969,6 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
                         self.bulk_insert(self.pull_request_labels_table, insert=labels_insert)
 
                     elif pr_nested_loop == 2:
-                        pr_nested_loop += 1
                         # PR reviewers insertion
                         reviewer_action_map = {
                             'insert': {
@@ -1014,7 +1013,6 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
 
                     elif pr_nested_loop == 3:
                         # PR assignees insertion
-                        pr_nested_loop += 1
                         assignee_action_map = {
                             'insert': {
                                 'source': ['pull_request_id', 'id'],
@@ -1059,7 +1057,6 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
 
                     elif pr_nested_loop == 4:
                         # PR meta insertion
-                        pr_nested_loop += 1
                         meta_action_map = {
                             'insert': {
                                 'source': ['pull_request_id', 'sha', 'pr_head_or_base'],
@@ -1104,6 +1101,8 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
                             # trying to fix bug SPG 11/29/2021 #meta['user'] and 'login' in meta['user']
                         ]  # reverted above to see if it works with other fixes.
                         self.bulk_insert(self.pull_request_meta_table, insert=meta_insert)
+
+                    pr_nested_loop += 1
 
                 except Exception as e:
                     self.print_traceback("Nested data model", e)
