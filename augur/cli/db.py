@@ -213,6 +213,15 @@ def create_schema(augur_app):
     check_pgpass_credentials(augur_app.config.get_raw_config())
     run_psql_command_in_database(augur_app, '-f', 'schema/create_schema.sql')
 
+@cli.command('remove-schema')
+@pass_application
+def create_schema(augur_app):
+    """
+    Create schema in the configured database
+    """
+    check_pgpass_credentials(augur_app.config.get_raw_config())
+    run_psql_command_in_database(augur_app, '-f', 'schema/remove_schema.sql')
+
 def generate_key(length):
     return ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(length))
 
