@@ -620,28 +620,24 @@ class GitHubPullRequestWorker(WorkerGitInterfaceable):
             except Exception as e:
                 self.print_traceback("PR comments model", e)
 
-            finally:
-                try: 
-                    self.pull_request_events_model(pk_source_prs)
-                    self.logger.info(f"Pull request events model.")
-                except Exception as e:
-                    self.print_traceback("PR events model", e)
+            try:
+                self.pull_request_events_model(pk_source_prs)
+                self.logger.info(f"Pull request events model.")
+            except Exception as e:
+                self.print_traceback("PR events model", e)
 
-                finally:
-                    try: 
-                        self.logger.info(f"Pull request reviews model factored out for now due to speed.")
-                    except Exception as e:
-                        self.print_traceback("PR reviews model, which is factored out for now due to speed", e)
+            try:
+                self.logger.info(f"Pull request reviews model factored out for now due to speed.")
+            except Exception as e:
+                self.print_traceback("PR reviews model, which is factored out for now due to speed", e)
 
-                    finally:
-                        try:
-                            self.pull_request_nested_data_model(pk_source_prs)
-                            self.logger.info(f"Pull request nested data model.")
-                        except Exception as e:
-                            self.print_traceback("PR nested model", e)
+            try:
+                self.pull_request_nested_data_model(pk_source_prs)
+                self.logger.info(f"Pull request nested data model.")
+            except Exception as e:
+                self.print_traceback("PR nested model", e)
 
-                        finally:
-                            self.logger.debug("finished running through four models.")
+            self.logger.debug("finished running through four models.")
 
         self.register_task_completion(self.task_info, self.repo_id, 'pull_requests')
 
