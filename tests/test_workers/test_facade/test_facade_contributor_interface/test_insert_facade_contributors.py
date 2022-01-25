@@ -3,8 +3,8 @@ from tests.test_workers.test_facade.test_facade_contributor_interface.test_endpo
 
 
 
-def test_insert_facade_contributors_default_basic(database_connection):
-    set_up_repo_groups(database_connection)
+def test_insert_facade_contributors_default_basic(database_connection, set_up_repo_groups):
+    #set_up_repo_groups(database_connection)
     
     dummy = DummyFullWorker(database_connection)
     
