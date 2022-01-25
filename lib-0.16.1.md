@@ -173,3 +173,4 @@ xgboost==0.90
 xlrd==2.0.1
 XlsxWriter==1.3.7
 zict==2.0.0
+docker==5.0.3
